@@ -1,0 +1,7 @@
+﻿---
+BasedOnStyle: WebKit
+ColumnLimit: '100'
+TabWidth: '4'
+UseTab: Never
+
+...
