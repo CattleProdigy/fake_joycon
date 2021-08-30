@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.1)
 project(fake_joycon)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 find_package(Threads)
 set(CMAKE_C_STANDARD 11)
 set(C_EXTENSIONS ON)
