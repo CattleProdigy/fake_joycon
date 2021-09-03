@@ -1,7 +1,7 @@
 #include <czmq.h>
 #include <stdio.h>
 
-int handler(zloop_t*, zsock_t* sock, void*)
+int handler(zloop_t* loop, zsock_t* sock, void* data)
 {
     uint32_t time;
     int32_t value;
@@ -12,17 +12,27 @@ int handler(zloop_t*, zsock_t* sock, void*)
     return 0;
 }
 
-enum EmuRecvState {
-    Listening = 0,
-    Pairing = 1,
-    Paired = 2,
+int monitor_handler(zloop_t* loop, zsock_t* reader, void* handler_data_void)
+{
+    char* msg = zstr_recv(reader);
+    if (strncmp(msg, "DISCONNECTED", strlen("DISCONNECTED")) == 0) {
+        freen(msg);
+        return -1;
+    }
+    freen(msg);
+    return 0;
+}
+
+enum BeaconClientState {
+    Beaconing = 0,
+    Paired = 1,
 };
 
-char* listen()
+char* beacon_listen()
 {
-    char* endpoint = nullptr;
-    char* ip_addr = nullptr;
-    char* magic = nullptr;
+    char* endpoint = NULL;
+    char* ip_addr = NULL;
+    char* magic = NULL;
     unsigned int port = 0;
 
     int recv_res = -1;
@@ -98,72 +108,62 @@ cleanup:
     return endpoint;
 }
 
-int main(int, char**)
+bool paired_streaming(zsock_t* socket)
+{
+    zsys_info("sending:fisrt");
+    zstr_send(socket, "MITCHPURDY");
+    zsys_info("sent");
+
+    zactor_t* monitor = zactor_new(zmonitor, socket);
+    zstr_sendx(monitor, "VERBOSE", NULL);
+    zstr_sendx(monitor, "LISTEN", "DISCONNECTED", NULL);
+    zstr_sendx(monitor, "START", NULL);
+
+    // Create a new zloop reactor
+    zloop_t* loop = zloop_new();
+    zloop_reader(loop, (zsock_t*)monitor, monitor_handler, NULL);
+    zloop_reader(loop, socket, handler, NULL);
+    return zloop_start(loop) == -1; // if 0 then it was interupted
+}
+
+int main(int argc, char** argv)
 {
     zsys_set_logstream(stderr);
 
-    char* endpoint = listen();
+    enum BeaconClientState state = Beaconing;
 
-    zsys_info("connecting to: %s", endpoint);
-    zsock_t* sub = zsock_new_pair(endpoint);
-    zsys_info("connecteds, %p", sub);
+    zsock_t* paired_socket = NULL;
 
-    zloop_t* looper = zloop_new();
+    while (true) {
+        switch (state) {
+        case Beaconing: {
+            zsys_info("BEaAC");
 
-    zsys_info("sending:fisrt");
-    zstr_send(sub, "MITCHPURDY");
-    zsys_info("sent");
+            char* endpoint = beacon_listen();
+            if (endpoint != NULL) {
+                state = Paired;
+            } else {
+                return -1;
+            }
+            zsys_info("connecting to: %s", endpoint);
+            paired_socket = zsock_new_pair(endpoint);
+            freen(endpoint);
 
-    zloop_reader(looper, (zsock_t*)sub, &handler, NULL);
-    zloop_start(looper);
-    zsys_info("post start");
+            break;
+        }
+        case Paired: {
+            zsys_info("PAIR");
+            if (!paired_streaming(paired_socket)) {
+                zsock_destroy(&paired_socket);
+                return -1;
+            }
 
-    zsock_destroy(&sub);
-
-    freen(endpoint);
-
-    // char* endpoint = listen();
-
-    // zsys_info("connecting to: %s", endpoint);
-    // zsock_t* sub = zsock_new_pair(endpoint);
-    // zsock_send(sub, "sb", "SUBSCRIBE", "", 0);
-    // zsys_info("connecteds, %p", sub);
-
-    // zloop_t* looper = zloop_new();
-
-    // usleep(500);
-
-    // zsys_info("sending:fisrt");
-    // zstr_send(sub, "first");
-
-    // zloop_reader(looper, (zsock_t*)sub, &handler, NULL);
-    // zloop_start(looper);
-
-    // zsock_destroy(&sub);
-
-    // freen(endpoint);
-    //    zactor_t* beacon = zactor_new(zbeacon, NULL);
-    //    zsock_send(beacon, "si", "CONFIGURE", 9999);
-    //
-    //    zactor_t* listener = zactor_new(zbeacon, NULL);
-    //    zsock_send(listener, "si", "CONFIGURE", 9999);
-    //    zsock_send(listener, "sb", "SUBSCRIBE", "", 0);
-    //    // read listening ip
-    //    {
-    //        char* ip_addr = zstr_recv(listener);
-    //        freen(ip_addr);
-    //    }
-    //
-    //    const char* filter = "SWITCHCON";
-    //    zsock_send(beacon, "sbi", "PUBLISH", filter, strlen(filter), 1000);
-    //
-    //    zloop_t* looper = zloop_new();
-    //
-    //    zloop_reader(looper, (zsock_t*)listener, &handler, NULL);
-    //
-    //    zloop_start(looper);
-    //
-    //    zactor_destroy(&beacon);
+            zsock_destroy(&paired_socket);
+            state = Beaconing;
+            break;
+        }
+        }
+    }
 
     return 0;
 }

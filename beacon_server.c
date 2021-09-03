@@ -3,19 +3,6 @@
 #include <stdio.h>
 #include <unistd.h>
 
-int handler(zloop_t*, zsock_t* sock, void*)
-{
-    char* msg = zstr_recv(sock);
-    zsys_info("handler msg: %s", msg);
-    freen(msg);
-    while (true) {
-        char str[1024];
-        scanf("%s", str);
-        zstr_send(sock, str);
-    }
-    return 0;
-}
-
 enum BeaconServerState {
     Beaconing = 0,
     Paired = 1,
@@ -69,6 +56,7 @@ bad:
 
 cleanup:
 
+    zactor_destroy(&monitor);
     freen(response_magic);
     zstr_sendx(beacon, "SILENCE", NULL);
     zactor_destroy(&beacon);
@@ -82,9 +70,26 @@ struct controller_handler_data_t {
     zsock_t* output_sock;
 };
 
-int controller_read_handler(zloop_t*, zmq_pollitem_t*, void* handler_data_void)
+int monitor_handler(zloop_t* loop, zsock_t* reader, void* handler_data_void)
 {
-    struct controller_handler_data_t* handler_data = (controller_handler_data_t*)handler_data_void;
+    char* msg = zstr_recv(reader);
+    if (strncmp(msg, "DISCONNECTED", strlen("DISCONNECTED")) == 0) {
+        freen(msg);
+        return -1;
+    }
+    freen(msg);
+    return 0;
+}
+
+int controller_read_handler(zloop_t* loop, zmq_pollitem_t* pollitem, void* handler_data_void)
+{
+    fprintf(stderr, "Controllerhandler");
+    if (pollitem->socket != NULL) {
+        char* msg = zstr_recv(pollitem->socket);
+        zsys_info("Msg: %s", msg);
+        freen(msg);
+    }
+    struct controller_handler_data_t* handler_data = (struct controller_handler_data_t*)handler_data_void;
     struct js_event event;
     ssize_t bytes = read(handler_data->fd, &event, sizeof(event));
 
@@ -94,6 +99,8 @@ int controller_read_handler(zloop_t*, zmq_pollitem_t*, void* handler_data_void)
             event.number);
         return 0;
     } else {
+        zsys_info("DISCONNECT");
+        fprintf(stderr, ("DISCONNECT"));
         return -1;
     }
 }
@@ -101,29 +108,35 @@ int controller_read_handler(zloop_t*, zmq_pollitem_t*, void* handler_data_void)
 bool paired_streaming(zsock_t* socket)
 {
     int jsfd = open("/dev/input/js0", O_RDONLY);
-    controller_handler_data_t handler_data = {
+    struct controller_handler_data_t handler_data = {
         .fd = jsfd,
         .output_sock = socket,
     };
-    zmq_pollitem_t pollitem {
+    zactor_t* monitor = zactor_new(zmonitor, socket);
+    zstr_sendx(monitor, "VERBOSE", NULL);
+    zstr_sendx(monitor, "LISTEN", "DISCONNECTED", NULL);
+    zstr_sendx(monitor, "START", NULL);
+
+    zmq_pollitem_t socket_pollitem = {
         .socket = NULL,
         .fd = jsfd,
         .events = ZMQ_POLLIN,
         .revents = 0,
     };
 
-    //  Create a new zloop reactor
+    // Create a new zloop reactor
     zloop_t* loop = zloop_new();
-    zloop_poller(loop, &pollitem, controller_read_handler, &handler_data);
+    zloop_reader(loop, (zsock_t*)monitor, monitor_handler, NULL);
+    zloop_poller(loop, &socket_pollitem, controller_read_handler, &handler_data);
     zloop_start(loop);
 
     return true;
 }
 
-int main(int, char**)
+int main(int argc, char** argv)
 {
     zsys_set_logstream(stderr);
-    BeaconServerState state = Beaconing;
+    enum BeaconServerState state = Beaconing;
 
     zsock_t* paired_socket = NULL;
 
@@ -142,10 +155,11 @@ int main(int, char**)
         case Paired: {
             zsys_info("PAIR");
             paired_streaming(paired_socket);
+            state = Beaconing;
+            zsock_destroy(&paired_socket);
             break;
         }
         }
-        usleep(1000000);
     }
 
     zsys_set_logstream(stderr);
@@ -169,12 +183,6 @@ int main(int, char**)
     zsock_send(beacon, "ssi", "PUBLISH", magic_port_str, 1000);
     zsys_info("started broadcast");
 
-    // zsock_send(listener, "sb", "SUBSCRIBE", "", 0);
-    // zloop_reader(looper, (zsock_t*)listener, &handler, NULL);
-
-    // zloop_start(looper);
-
-    // zactor_destroy(&beacon);
     zsys_info("waiting for first msg");
     char* msg = zstr_recv(listener);
     zsys_info("first msg: %s", msg);
