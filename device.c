@@ -16,6 +16,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "hid.h"
+
 #define HAT_TOP 0x00
 #define HAT_TOP_RIGHT 0x01
 #define HAT_RIGHT 0x02
@@ -61,101 +63,200 @@ static const char* const names[] = {
 #define STRINGID_PRODUCT 2
 #define STRINGID_SERIAL 3
 #define STRINGID_CONFIG 4
-#define STRINGID_INTERFACE 5
+//5
+#define STRINGID_INTERFACE 0
 
 #define STRING_MFGR "HORI CO.,LTD."
 #define STRING_PRODUCT "POKKEN CONTROLLER"
 #define STRING_SERIAL "69420"
 #define STRING_CONFIG "fakejoycon"
-#define STRING_INTERFACE "Source/Sink"
-
-const uint8_t hid_report_descriptor[80] = {
-    0x05, 0x01, // USAGE_PAGE (Generic Desktop)
-    0x09, 0x05, // USAGE (Game Pad)
-    0xa1, 0x01, // COLLECTION (Application)
-    0x15, 0x00, //   LOGICAL_MINIMUM (0)
-    0x25, 0x01, //   LOGICAL_MAXIMUM (1)
-    0x35, 0x00, //   PHYSICAL_MINIMUM (0)
-    0x45, 0x01, //   PHYSICAL_MAXIMUM (1)
-    0x75, 0x01, //   REPORT_SIZE (1)
-    0x95, 0x0e, //   REPORT_COUNT (14)
-    0x05, 0x09, //   USAGE_PAGE (Button)
-    0x19, 0x01, //   USAGE_MINIMUM (Button 1)
-    0x29, 0x0e, //   USAGE_MAXIMUM (Button 14)
-    0x81, 0x02, //   INPUT (Data,Var,Abs)
-    0x95, 0x02, //   REPORT_COUNT (2)
-    0x81, 0x01, //   INPUT (Cnst,Ary,Abs)
-    0x05, 0x01, //   USAGE_PAGE (Generic Desktop)
-    0x25, 0x07, //   LOGICAL_MAXIMUM (7)
-    0x46, 0x3b, 0x01, //   PHYSICAL_MAXIMUM (315)
-    0x75, 0x04, //   REPORT_SIZE (4)
-    0x95, 0x01, //   REPORT_COUNT (1)
-    0x65, 0x14, //   UNIT (Eng Rot:Angular Pos)
-    0x09, 0x39, //   USAGE (Hat switch)
-    0x81, 0x42, //   INPUT (Data,Var,Abs,Null)
-    0x65, 0x00, //   UNIT (None)
-    0x95, 0x01, //   REPORT_COUNT (1)
-    0x81, 0x01, //   INPUT (Cnst,Ary,Abs)
-    0x26, 0xff, 0x00, //   LOGICAL_MAXIMUM (255)
-    0x46, 0xff, 0x00, //   PHYSICAL_MAXIMUM (255)
-    0x09, 0x30, //   USAGE (X)
-    0x09, 0x31, //   USAGE (Y)
-    0x09, 0x32, //   USAGE (Z)
-    0x09, 0x35, //   USAGE (Rz)
-    0x75, 0x08, //   REPORT_SIZE (8)
-    0x95, 0x04, //   REPORT_COUNT (4)
-    0x81, 0x02, //   INPUT (Data,Var,Abs)
-    0x75, 0x08, //   REPORT_SIZE (8)
-    0x95, 0x01, //   REPORT_COUNT (1)
-    0x81, 0x03, //   INPUT (Cnst,Var,Abs)
-    0xc0 //     END_COLLECTION
-};
+#define STRING_INTERFACE ""
 
 // const uint8_t hid_report_descriptor[] = {
-//     0x05, 0x01, // Usage Page (Generic Desktop Ctrls)
-//     0x09, 0x04, // Usage (Joystick)
-//     0xA1, 0x01, // Collection (Application)
-//     0x15, 0x00, //   Logical Minimum (0)
-//     0x25, 0x01, //   Logical Maximum (1)
-//     0x35, 0x00, //   Physical Minimum (0)
-//     0x45, 0x01, //   Physical Maximum (1)
-//     0x75, 0x01, //   Report Size (1)
-//     0x95, 0x10, //   Report Count (16)
-//     0x05, 0x09, //   Usage Page (Button)
-//     0x19, 0x01, //   Usage Minimum (0x01)
-//     0x29, 0x10, //   Usage Maximum (0x10)
-//     0x81, 0x02, //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-//     0x05, 0x01, //   Usage Page (Generic Desktop Ctrls)
-//     0x25, 0x07, //   Logical Maximum (7)
-//     0x46, 0x3B, 0x01, //   Physical Maximum (315)
-//     0x75, 0x04, //   Report Size (4)
-//     0x95, 0x01, //   Report Count (1)
-//     0x65, 0x14, //   Unit (System: English Rotation, Length: Centimeter)
-//     0x09, 0x39, //   Usage (Hat switch)
-//     0x81, 0x42, //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,Null State)
-//     0x65, 0x00, //   Unit (None)
-//     0x95, 0x01, //   Report Count (1)
-//     0x81, 0x01, //   Input (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
-//     0x26, 0xFF, 0x00, //   Logical Maximum (255)
-//     0x46, 0xFF, 0x00, //   Physical Maximum (255)
-//     0x09, 0x30, //   Usage (X)
-//     0x09, 0x31, //   Usage (Y)
-//     0x09, 0x32, //   Usage (Z)
-//     0x09, 0x35, //   Usage (Rz)
-//     0x75, 0x08, //   Report Size (8)
-//     0x95, 0x04, //   Report Count (4)
-//     0x81, 0x02, //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-//     0x06, 0x00, 0xFF, //   Usage Page (Vendor Defined 0xFF00)
-//     0x09, 0x20, //   Usage (0x20)
-//     0x95, 0x01, //   Report Count (1)
-//     0x81, 0x02, //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-//     0x0A, 0x21, 0x26, //   Usage (0x2621)
-//     0x95, 0x08, //   Report Count (8)
-//     0x91,
-//     0x02, //   Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
-//     0xC0, // End Collection
+// 	HID_RI_USAGE_PAGE(8,1), /* Generic Desktop */
+// 	HID_RI_USAGE(8,5), /* Joystick */
+// 	HID_RI_COLLECTION(8,1), /* Application */
+// 		// Buttons (2 bytes)
+// 		HID_RI_LOGICAL_MINIMUM(8,0),
+// 		HID_RI_LOGICAL_MAXIMUM(8,1),
+// 		HID_RI_PHYSICAL_MINIMUM(8,0),
+// 		HID_RI_PHYSICAL_MAXIMUM(8,1),
+// 		// The Switch will allow us to expand the original HORI descriptors to a full 16 buttons.
+// 		// The Switch will make use of 14 of those buttons.
+// 		HID_RI_REPORT_SIZE(8,1),
+// 		HID_RI_REPORT_COUNT(8,16),
+// 		HID_RI_USAGE_PAGE(8,9),
+// 		HID_RI_USAGE_MINIMUM(8,1),
+// 		HID_RI_USAGE_MAXIMUM(8,16),
+// 		HID_RI_INPUT(8,2),
+// 		// HAT Switch (1 nibble)
+// 		HID_RI_USAGE_PAGE(8,1),
+// 		HID_RI_LOGICAL_MAXIMUM(8,7),
+// 		HID_RI_PHYSICAL_MAXIMUM(16,315),
+// 		HID_RI_REPORT_SIZE(8,4),
+// 		HID_RI_REPORT_COUNT(8,1),
+// 		HID_RI_UNIT(8,20),
+// 		HID_RI_USAGE(8,57),
+// 		HID_RI_INPUT(8,66),
+// 		// There's an additional nibble here that's utilized as part of the Switch Pro Controller.
+// 		// I believe this -might- be separate U/D/L/R bits on the Switch Pro Controller, as they're utilized as four button descriptors on the Switch Pro Controller.
+// 		HID_RI_UNIT(8,0),
+// 		HID_RI_REPORT_COUNT(8,1),
+// 		HID_RI_INPUT(8,1),
+// 		// Joystick (4 bytes)
+// 		HID_RI_LOGICAL_MAXIMUM(16,255),
+// 		HID_RI_PHYSICAL_MAXIMUM(16,255),
+// 		HID_RI_USAGE(8,48),
+// 		HID_RI_USAGE(8,49),
+// 		HID_RI_USAGE(8,50),
+// 		HID_RI_USAGE(8,53),
+// 		HID_RI_REPORT_SIZE(8,8),
+// 		HID_RI_REPORT_COUNT(8,4),
+// 		HID_RI_INPUT(8,2),
+// 		// ??? Vendor Specific (1 byte)
+// 		// This byte requires additional investigation.
+// 		HID_RI_USAGE_PAGE(16,65280),
+// 		HID_RI_USAGE(8,32),
+// 		HID_RI_REPORT_COUNT(8,1),
+// 		HID_RI_INPUT(8,2),
+// 		// Output (8 bytes)
+// 		// Original observation of this suggests it to be a mirror of the inputs that we sent.
+// 		// The Switch requires us to have these descriptors available.
+// 		HID_RI_USAGE(16,9761),
+// 		HID_RI_REPORT_COUNT(8,8),
+// 		HID_RI_OUTPUT(8,2),
+// 	HID_RI_END_COLLECTION(0),
 // };
-// // 86 bytes
+
+const uint8_t hid_report_descriptor[80] = {
+    0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
+    0x09, 0x05,                    // USAGE (Game Pad)
+    0xa1, 0x01,                    // COLLECTION (Application)
+    0x15, 0x00,                    //   LOGICAL_MINIMUM (0)
+    0x25, 0x01,                    //   LOGICAL_MAXIMUM (1)
+    0x35, 0x00,                    //   PHYSICAL_MINIMUM (0)
+    0x45, 0x01,                    //   PHYSICAL_MAXIMUM (1)
+    0x75, 0x01,                    //   REPORT_SIZE (1)
+    0x95, 0x0e,                    //   REPORT_COUNT (14)
+    0x05, 0x09,                    //   USAGE_PAGE (Button)
+    0x19, 0x01,                    //   USAGE_MINIMUM (Button 1)
+    0x29, 0x0e,                    //   USAGE_MAXIMUM (Button 14)
+    0x81, 0x02,                    //   INPUT (Data,Var,Abs)
+    0x95, 0x02,                    //   REPORT_COUNT (2)
+    0x81, 0x01,                    //   INPUT (Cnst,Ary,Abs)
+    0x05, 0x01,                    //   USAGE_PAGE (Generic Desktop)
+    0x25, 0x07,                    //   LOGICAL_MAXIMUM (7)
+    0x46, 0x3b, 0x01,              //   PHYSICAL_MAXIMUM (315)
+    0x75, 0x04,                    //   REPORT_SIZE (4)
+    0x95, 0x01,                    //   REPORT_COUNT (1)
+    0x65, 0x14,                    //   UNIT (Eng Rot:Angular Pos)
+    0x09, 0x39,                    //   USAGE (Hat switch)
+    0x81, 0x42,                    //   INPUT (Data,Var,Abs,Null)
+    0x65, 0x00,                    //   UNIT (None)
+    0x95, 0x01,                    //   REPORT_COUNT (1)
+    0x81, 0x01,                    //   INPUT (Cnst,Ary,Abs)
+    0x26, 0xff, 0x00,              //   LOGICAL_MAXIMUM (255)
+    0x46, 0xff, 0x00,              //   PHYSICAL_MAXIMUM (255)
+    0x09, 0x30,                    //   USAGE (X)
+    0x09, 0x31,                    //   USAGE (Y)
+    0x09, 0x32,                    //   USAGE (Z)
+    0x09, 0x35,                    //   USAGE (Rz)
+    0x75, 0x08,                    //   REPORT_SIZE (8)
+    0x95, 0x04,                    //   REPORT_COUNT (4)
+    0x81, 0x02,                    //   INPUT (Data,Var,Abs)
+    0x75, 0x08,                    //   REPORT_SIZE (8)
+    0x95, 0x01,                    //   REPORT_COUNT (1)
+    0x81, 0x01,                    //   INPUT (Cnst,Ary,Abs)
+    0xc0                           // END_COLLECTION
+};
+
+// const uint8_t hid_report_descriptor[80] = {
+//     0x05, 0x01, // USAGE_PAGE (Generic Desktop)
+//     0x09, 0x05, // USAGE (Game Pad)
+//     0xa1, 0x01, // COLLECTION (Application)
+//     0x15, 0x00, //   LOGICAL_MINIMUM (0)
+//     0x25, 0x01, //   LOGICAL_MAXIMUM (1)
+//     0x35, 0x00, //   PHYSICAL_MINIMUM (0)
+//     0x45, 0x01, //   PHYSICAL_MAXIMUM (1)
+//     0x75, 0x01, //   REPORT_SIZE (1)
+//     0x95, 0x0e, //   REPORT_COUNT (14)
+//     0x05, 0x09, //   USAGE_PAGE (Button)
+//     0x19, 0x01, //   USAGE_MINIMUM (Button 1)
+//     0x29, 0x0e, //   USAGE_MAXIMUM (Button 14)
+//     0x81, 0x02, //   INPUT (Data,Var,Abs)
+//     0x95, 0x02, //   REPORT_COUNT (2)
+//     0x81, 0x01, //   INPUT (Cnst,Ary,Abs)
+//     0x05, 0x01, //   USAGE_PAGE (Generic Desktop)
+//     0x25, 0x07, //   LOGICAL_MAXIMUM (7)
+//     0x46, 0x3b, 0x01, //   PHYSICAL_MAXIMUM (315)
+//     0x75, 0x04, //   REPORT_SIZE (4)
+//     0x95, 0x01, //   REPORT_COUNT (1)
+//     0x65, 0x14, //   UNIT (Eng Rot:Angular Pos)
+//     0x09, 0x39, //   USAGE (Hat switch)
+//     0x81, 0x42, //   INPUT (Data,Var,Abs,Null)
+//     0x65, 0x00, //   UNIT (None)
+//     0x95, 0x01, //   REPORT_COUNT (1)
+//     0x81, 0x01, //   INPUT (Cnst,Ary,Abs)
+//     0x26, 0xff, 0x00, //   LOGICAL_MAXIMUM (255)
+//     0x46, 0xff, 0x00, //   PHYSICAL_MAXIMUM (255)
+//     0x09, 0x30, //   USAGE (X)
+//     0x09, 0x31, //   USAGE (Y)
+//     0x09, 0x32, //   USAGE (Z)
+//     0x09, 0x35, //   USAGE (Rz)
+//     0x75, 0x08, //   REPORT_SIZE (8)
+//     0x95, 0x04, //   REPORT_COUNT (4)
+//     0x81, 0x02, //   INPUT (Data,Var,Abs)
+//     0x75, 0x08, //   REPORT_SIZE (8)
+//     0x95, 0x01, //   REPORT_COUNT (1)
+//     0x81, 0x03, //   INPUT (Cnst,Var,Abs)
+//     0xc0 //     END_COLLECTION
+// };
+
+ // const uint8_t hid_report_descriptor[] = {
+ //     0x05, 0x01, // Usage Page (Generic Desktop Ctrls)
+ //     0x09, 0x04, // Usage (Joystick)
+ //     0xA1, 0x01, // Collection (Application)
+ //     0x15, 0x00, //   Logical Minimum (0)
+ //     0x25, 0x01, //   Logical Maximum (1)
+ //     0x35, 0x00, //   Physical Minimum (0)
+ //     0x45, 0x01, //   Physical Maximum (1)
+ //     0x75, 0x01, //   Report Size (1)
+ //     0x95, 0x10, //   Report Count (16)
+ //     0x05, 0x09, //   Usage Page (Button)
+ //     0x19, 0x01, //   Usage Minimum (0x01)
+ //     0x29, 0x10, //   Usage Maximum (0x10)
+ //     0x81, 0x02, //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+ //     0x05, 0x01, //   Usage Page (Generic Desktop Ctrls)
+ //     0x25, 0x07, //   Logical Maximum (7)
+ //     0x46, 0x3B, 0x01, //   Physical Maximum (315)
+ //     0x75, 0x04, //   Report Size (4)
+ //     0x95, 0x01, //   Report Count (1)
+ //     0x65, 0x14, //   Unit (System: English Rotation, Length: Centimeter)
+ //     0x09, 0x39, //   Usage (Hat switch)
+ //     0x81, 0x42, //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,Null State)
+ //     0x65, 0x00, //   Unit (None)
+ //     0x95, 0x01, //   Report Count (1)
+ //     0x81, 0x01, //   Input (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
+ //     0x26, 0xFF, 0x00, //   Logical Maximum (255)
+ //     0x46, 0xFF, 0x00, //   Physical Maximum (255)
+ //     0x09, 0x30, //   Usage (X)
+ //     0x09, 0x31, //   Usage (Y)
+ //     0x09, 0x32, //   Usage (Z)
+ //     0x09, 0x35, //   Usage (Rz)
+ //     0x75, 0x08, //   Report Size (8)
+ //     0x95, 0x04, //   Report Count (4)
+ //     0x81, 0x02, //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+ //     0x06, 0x00, 0xFF, //   Usage Page (Vendor Defined 0xFF00)
+ //     0x09, 0x20, //   Usage (0x20)
+ //     0x95, 0x01, //   Report Count (1)
+ //     0x81, 0x02, //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+ //     0x0A, 0x21, 0x26, //   Usage (0x2621)
+ //     0x95, 0x08, //   Report Count (8)
+ //     0x91,
+ //     0x02, //   Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+ //     0xC0, // End Collection
+ // };
+ // // 86 bytes
 
 struct hid_descriptor {
     __u8 bLength;
@@ -171,25 +272,25 @@ static const struct {
     struct usb_functionfs_strings_head header;
     struct {
         __le16 code;
-        const char str1[sizeof STRING_MFGR];
-        const char str2[sizeof STRING_PRODUCT];
-        const char str3[sizeof STRING_SERIAL];
-        const char str4[sizeof STRING_CONFIG];
+        //const char str1[sizeof STRING_MFGR];
+        //const char str2[sizeof STRING_PRODUCT];
+        //const char str3[sizeof STRING_SERIAL];
+        //const char str4[sizeof STRING_CONFIG];
         const char str5[sizeof STRING_INTERFACE];
     } __attribute__((packed)) english_stringtab;
 } __attribute__((packed)) strings = {
     .header = {
         .magic = cpu_to_le32(FUNCTIONFS_STRINGS_MAGIC),
         .length = cpu_to_le32(sizeof strings),
-        .str_count = cpu_to_le32(5),
+        .str_count = cpu_to_le32(1),
         .lang_count = cpu_to_le32(1),
     },
     .english_stringtab = {
         cpu_to_le16(0x0409), /* en-us */
-        STRING_MFGR,
-        STRING_PRODUCT,
-        STRING_SERIAL,
-        STRING_CONFIG,
+        //STRING_MFGR,
+        //STRING_PRODUCT,
+        //STRING_SERIAL,
+        //STRING_CONFIG,
         STRING_INTERFACE
     },
 };
@@ -220,7 +321,7 @@ static const struct {
 } __attribute__((packed)) descriptors = {
     .header = {
         .magic = cpu_to_le32(FUNCTIONFS_DESCRIPTORS_MAGIC_V2),
-        .flags = cpu_to_le32( FUNCTIONFS_HAS_HS_DESC),
+        .flags = cpu_to_le32(FUNCTIONFS_HAS_HS_DESC),
         .length = cpu_to_le32(sizeof descriptors),
     },
     .hs_count = cpu_to_le32(4),
@@ -228,7 +329,7 @@ static const struct {
        .intf = {
             .bLength = sizeof descriptors.hs_descs.intf,
             .bDescriptorType = USB_DT_INTERFACE,
-            .bNumEndpoints = 1,
+            .bNumEndpoints = 2,
             .bInterfaceClass = USB_CLASS_HID,
             .iInterface = STRINGID_INTERFACE,
         },
@@ -244,18 +345,18 @@ static const struct {
         .hid_in_ep = {
             .bLength = sizeof descriptors.hs_descs.hid_in_ep,
             .bDescriptorType = USB_DT_ENDPOINT,
-            .bEndpointAddress = 1 | USB_DIR_IN,
+            .bEndpointAddress = 0x81, // 1 | USB_DIR_IN,
             .bmAttributes = USB_ENDPOINT_XFER_INT,
             .wMaxPacketSize = cpu_to_le16(0x40), // switch mandates 64 bytes allegedly
-            .bInterval = 0x05, // TODO what does this mean, it's for interrupt endpoints
+            .bInterval = 5, // TODO what does this mean, it's for interrupt endpoints
         },
         .hid_out_ep = {
             .bLength = sizeof descriptors.hs_descs.hid_out_ep,
             .bDescriptorType = USB_DT_ENDPOINT,
-            .bEndpointAddress = 1 | USB_DIR_OUT,
+            .bEndpointAddress = 4,//0x02,
             .bmAttributes = USB_ENDPOINT_XFER_INT,
             .wMaxPacketSize = cpu_to_le16(0x40), // switch mandates 64 bytes allegedly
-            .bInterval = 0x05, // TODO what does this mean, it's for interrupt endpoints
+            .bInterval = 5 // TODO what does this mean, it's for interrupt endpoints
         },
     },
 };
@@ -296,7 +397,7 @@ void handle_setup(int fd, const struct usb_ctrlrequest* setup)
                 if (errno == EIDRM)
                     printf("string timeout\n");
                 else
-                    perror("wrote report desc");
+                    printf("other errno: wrote report desc\n");
             } else if (status != sizeof(hid_report_descriptor)) {
                 fprintf(stderr, "short string write, %d\n", status);
             }
@@ -319,8 +420,14 @@ void handle_setup(int fd, const struct usb_ctrlrequest* setup)
         status = write(fd, &b, 1);
         break;
     case USB_REQ_SET_INTERFACE:
+        if (ioctl (fd, FUNCTIONFS_CLEAR_HALT) < 0) {
+            status = errno;
+            perror ("reset source fd");
+        }
         printf("USB_REQ_SET_INTERFACE");
+        break;
     default:
+        printf("OTHER SETUP");
         goto stall;
     }
 
@@ -456,13 +563,11 @@ bool ep2_loop(void* ep2_data_void)
 
     struct USB_JoystickReport_Output_t output = { 0 };
 
-    ssize_t bytes_written = write(ep2_data->fd, &output, sizeof(output));
-    if (bytes_written < (ssize_t)sizeof(output)) {
-        printf("A!@#\n");
-        return false;
-    }
-    // int status;
-    // ssize_t bytes_read = read(ep2_data->fd, &status, 0);
+    printf("ep2 read start \n");
+    ssize_t bytes_read = read(ep2_data->fd, &output, sizeof(output));
+    printf("e2 bytes read: %lu \n", bytes_read);
+    int status;
+    write(ep2_data->fd, &status, 0);
 
     return true;
 }
@@ -536,16 +641,22 @@ bool ep1_loop(void* ep1_data_void)
     struct ep1_data_t* ep1_data = ep1_data_void;
 
     struct USB_JoystickReport_Input_t in = { 0 };
+    //printf("EP1: lock\n");
     pthread_mutex_lock(&g_joystick_data_mutex);
     in = g_joystick_data;
     pthread_mutex_unlock(&g_joystick_data_mutex);
+    //printf("EP1: unlock\n");
 
+    //printf("EP1: prewrite\n");
     ssize_t bytes_written = write(ep1_data->fd, &in, sizeof(in));
+    //printf("EP1: write: %li\n", bytes_written);
     if (bytes_written < (ssize_t)sizeof(in)) {
+        printf("EP1: bailing\n");
         return false;
     }
     int status;
-    ssize_t bytes_read = read(ep1_data->fd, &status, 0);
+    //printf("EP1: fake read\n");
+    //ssize_t bytes_read = read(ep1_data->fd, &status, 0);
 
     return true;
 }
